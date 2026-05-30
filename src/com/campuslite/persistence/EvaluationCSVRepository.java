@@ -1,10 +1,14 @@
 package com.campuslite.persistence;
 
-import com.campuslite.domain.*;
+import com.campuslite.domain.Enrollment;
+import com.campuslite.domain.Evaluation;
+import com.campuslite.domain.Laboratory;
+import com.campuslite.domain.ProjectEvaluation;
+import com.campuslite.domain.WrittenExam;
 
+import java.util.List;
 import javax.swing.*;
 import java.io.*;
-import java.util.List;
 
 /**
  * Persistencia CSV de evaluaciones.
@@ -14,134 +18,148 @@ public class EvaluationCSVRepository {
     /**
      * Guarda evaluaciones.
      */
-    public void saveEvaluations(List<Course> courses) {
+	public void saveEvaluations(List<Enrollment> enrollments) {
 
-        try (PrintWriter writer =
-                     new PrintWriter(
-                             new FileWriter(
-                                     FilePaths.EVALUATIONS_FILE
-                             ))) {
+	    try (PrintWriter writer =
+	                 new PrintWriter(
+	                         new FileWriter(
+	                                 FilePaths.EVALUATIONS_FILE
+	                         ))) {
 
-            writer.println(
-                    "courseCode,type,name,score,percentage"
-            );
+	        writer.println(
+	                "studentCode,courseCode,type,name,score,percentage"
+	        );
 
-            for (Course course : courses) {
+	        for (Enrollment enrollment : enrollments) {
 
-                for (Evaluation evaluation :
-                        course.getEvaluations()) {
+	            for (Evaluation evaluation :
+	                    enrollment.getEvaluations()) {
 
-                    writer.println(
-                            course.getCourseCode() + "," +
-                            evaluation.getTypeName() + "," +
-                            evaluation.getEvaluationName() + "," +
-                            evaluation.getScore() + "," +
-                            evaluation.getPercentage()
-                    );
-                }
-            }
+	                writer.println(
+	                        enrollment.getStudent()
+	                                .getStudentCode() + "," +
 
-        } catch (IOException e) {
+	                        enrollment.getCourse()
+	                                .getCourseCode() + "," +
 
-            JOptionPane.showMessageDialog(
-                    null,
-                    "Error al guardar evaluaciones.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
+	                        evaluation.getTypeName() + "," +
 
-            e.printStackTrace();
-        }
-    }
+	                        evaluation.getEvaluationName() + "," +
+
+	                        evaluation.getScore() + "," +
+
+	                        evaluation.getPercentage()
+	                );
+	            }
+	        }
+
+	    } catch (IOException e) {
+
+	        JOptionPane.showMessageDialog(
+	                null,
+	                "Error al guardar evaluaciones.",
+	                "Error",
+	                JOptionPane.ERROR_MESSAGE
+	        );
+
+	        e.printStackTrace();
+	    }
+	}
 
     /**
-     * Carga evaluaciones desde CSV.
+     * Carga evaluaciones.
      */
-    public void loadEvaluations(List<Course> courses) {
+	public void loadEvaluations(
+	        List<Enrollment> enrollments
+	) {
 
-        File file = new File(
-                FilePaths.EVALUATIONS_FILE
-        );
+	    File file =
+	            new File(
+	                    FilePaths.EVALUATIONS_FILE
+	            );
 
-        if (!file.exists()) {
-            return;
-        }
+	    if (!file.exists()) {
+	        return;
+	    }
 
-        try (BufferedReader br =
-                     new BufferedReader(
-                             new FileReader(file))) {
+	    try (BufferedReader br =
+	                 new BufferedReader(
+	                         new FileReader(file))) {
 
-            String line;
+	        br.readLine();
 
-            /**
-             * Saltar encabezado.
-             */
-            br.readLine();
+	        String line;
 
-            while ((line = br.readLine()) != null) {
+	        while ((line = br.readLine()) != null) {
 
-                String[] data = line.split(",");
+	            String[] data = line.split(",");
 
-                String courseCode = data[0];
+	            String studentCode = data[0];
 
-                String type = data[1];
+	            String courseCode = data[1];
 
-                String name = data[2];
+	            String type = data[2];
 
-                double score =
-                        Double.parseDouble(data[3]);
+	            String name = data[3];
 
-                double percentage =
-                        Double.parseDouble(data[4]);
+	            double score =
+	                    Double.parseDouble(data[4]);
 
-                /**
-                 * Buscar curso correcto.
-                 */
-                for (Course course : courses) {
+	            double percentage =
+	                    Double.parseDouble(data[5]);
 
-                    if (course.getCourseCode()
-                            .equals(courseCode)) {
+	            for (Enrollment enrollment :
+	                    enrollments) {
 
-                        Evaluation evaluation =
-                                createEvaluation(
-                                        type,
-                                        name,
-                                        score,
-                                        percentage
-                                );
+	                boolean sameStudent =
+	                        enrollment.getStudent()
+	                                .getStudentCode()
+	                                .equals(studentCode);
 
-                        if (evaluation != null) {
+	                boolean sameCourse =
+	                        enrollment.getCourse()
+	                                .getCourseCode()
+	                                .equals(courseCode);
 
-                            course.addEvaluation(
-                                    evaluation
-                            );
-                        }
+	                if (sameStudent && sameCourse) {
 
-                        break;
-                    }
-                }
-            }
+	                    Evaluation evaluation =
+	                            createEvaluation(
+	                                    type,
+	                                    name,
+	                                    score,
+	                                    percentage
+	                            );
 
-        } catch (IOException ex) {
+	                    enrollment.addEvaluation(
+	                            evaluation
+	                    );
 
-            JOptionPane.showMessageDialog(
-                    null,
-                    "Error cargando evaluaciones.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
+	                    break;
+	                }
+	            }
+	        }
 
-            ex.printStackTrace();
-        }
-    }
+	    } catch (IOException ex) {
 
+	        JOptionPane.showMessageDialog(
+	                null,
+	                "Error cargando evaluaciones.",
+	                "Error",
+	                JOptionPane.ERROR_MESSAGE
+	        );
+
+	        ex.printStackTrace();
+	    }
+	}
     /**
      * Crea evaluación según tipo.
      */
-    private Evaluation createEvaluation(String type,
-                                        String name,
-                                        double score,
-                                        double percentage) {
+    private Evaluation createEvaluation(
+            String type,
+            String name,
+            double score,
+            double percentage) {
 
         switch (type) {
 
@@ -173,5 +191,4 @@ public class EvaluationCSVRepository {
                 return null;
         }
     }
-
 }

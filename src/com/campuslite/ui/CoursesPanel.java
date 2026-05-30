@@ -2,9 +2,11 @@ package com.campuslite.ui;
 
 import com.campuslite.domain.Course;
 import com.campuslite.logic.CourseManager;
+import com.campuslite.logic.EnrollmentManager;
 import com.campuslite.logic.ValidationUtils;
 import com.campuslite.persistence.CourseCSVRepository;
-
+import com.campuslite.persistence.EnrollmentCSVRepository;
+import com.campuslite.persistence.EvaluationCSVRepository;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -15,13 +17,15 @@ import java.awt.*;
 public class CoursesPanel extends JPanel {
 
     private final CourseManager courseManager;
-
+    private final EnrollmentManager enrollmentManager;
     private final CourseCSVRepository repository;
+    private final EnrollmentCSVRepository enrollmentRepository;
+    private final EvaluationCSVRepository evaluationRepository;
     private Runnable onCoursesChanged;
 
-    /**
-     * Componentes UI.
-     */
+    
+    // Componentes UI.
+     
     private JTextField txtCode;
     private JTextField txtName;
     private JTextField txtCredits;
@@ -31,11 +35,16 @@ public class CoursesPanel extends JPanel {
 
     private DefaultTableModel model;
 
-    public CoursesPanel(CourseManager courseManager) {
+    public CoursesPanel(CourseManager courseManager,EnrollmentManager enrollmentManager) {
 
         this.courseManager = courseManager;
-
+        this.enrollmentManager = enrollmentManager;
         repository = new CourseCSVRepository();
+        enrollmentRepository =
+                new EnrollmentCSVRepository();
+
+        evaluationRepository =
+                new EvaluationCSVRepository();
 
         initialize();
 
@@ -135,13 +144,13 @@ public class CoursesPanel extends JPanel {
         );
 
         ModernButton btnAdd =
-                new ModernButton("Agregar");
+                new ModernButton("➕ Agregar");
 
         ModernButton btnUpdate =
-                new ModernButton("Actualizar");
+                new ModernButton("🔄 Actualizar");
 
         ModernButton btnDelete =
-                new ModernButton("Eliminar");
+                new ModernButton("❌ Eliminar");
 
         buttonPanel.add(btnAdd);
 
@@ -314,16 +323,33 @@ public class CoursesPanel extends JPanel {
                     model.getValueAt(row, 0)
                             .toString();
 
+            /**
+             * Nuevos datos desde campos.
+             */
+            String newCode = originalCode;
+
+            String name =
+                    txtName.getText();
+
+            int credits =
+                    Integer.parseInt(
+                            txtCredits.getText()
+                    );
+
+            int capacity =
+                    Integer.parseInt(
+                            txtCapacity.getText()
+                    );
+
+            /**
+             * Nuevo objeto actualizado.
+             */
             Course updatedCourse =
                     new Course(
-                            originalCode,
-                            txtName.getText(),
-                            Integer.parseInt(
-                                    txtCredits.getText()
-                            ),
-                            Integer.parseInt(
-                                    txtCapacity.getText()
-                            )
+                            newCode,
+                            name,
+                            credits,
+                            capacity
                     );
 
             courseManager.updateCourse(
@@ -336,7 +362,7 @@ public class CoursesPanel extends JPanel {
             );
 
             refreshTable();
-            
+
             if (onCoursesChanged != null) {
 
                 onCoursesChanged.run();
@@ -380,8 +406,24 @@ public class CoursesPanel extends JPanel {
         String code =
                 model.getValueAt(row, 0)
                         .toString();
+        enrollmentManager.removeEnrollmentsByCourse(
+                code
+        );
 
         courseManager.removeCourse(code);
+        /**
+         * Reescribe inscripciones.
+         */
+        enrollmentRepository.saveEnrollments(
+                enrollmentManager.getEnrollments()
+        );
+
+        /**
+         * Reescribe evaluaciones.
+         */
+        evaluationRepository.saveEvaluations(
+                enrollmentManager.getEnrollments()
+        );
 
         repository.saveCourses(
                 courseManager.getCourses()
@@ -410,6 +452,12 @@ public class CoursesPanel extends JPanel {
         int row = table.getSelectedRow();
 
         if (row != -1) {
+        	
+        	/**
+             * Bloquear edición de carnet
+             * al editar un estudiante.
+             */
+            txtCode.setEditable(false);
 
             txtCode.setText(
                     model.getValueAt(row, 0)
@@ -466,6 +514,12 @@ public class CoursesPanel extends JPanel {
         txtCredits.setText("");
 
         txtCapacity.setText("");
+        
+        /**
+         * Volver a habilitar carnet
+         * para nuevos registros.
+         */
+        txtCode.setEditable(true);
     }
 
     /**
